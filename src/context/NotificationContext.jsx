@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import { getAppointments } from '../api/appointmentApi';
 import { useAuth } from '../hooks/useAuth.js';
 
 const NotificationContext = createContext(null);
 
-// Statuses admin cares about tracking
-const WATCH_STATUSES = ['confirmed', 'payment_pending'];
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
 
 export function NotificationProvider({ children }) {
   const { isAuthenticated } = useAuth();
@@ -13,10 +13,9 @@ export function NotificationProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [callingAppointments, setCallingAppointments] = useState([]);
 
-  // Track previously seen appointments to detect new ones
-  const prevAppointmentIds = useRef(new Set());
-  const prevStatuses = useRef({});       // { appointmentId: status }
-  const timerRef = useRef(null);
+  const socketRef = useRef(null);
+  // Track previously seen statuses to avoid duplicate toasts
+  const prevStatuses = useRef({});
 
   // ── Toast helpers ──────────────────────────────────────────────────────────
   const addToast = useCallback((toast) => {
@@ -37,81 +36,111 @@ export function NotificationProvider({ children }) {
   const notifications = toasts;
   const clearAll = useCallback(() => setToasts([]), []);
 
-  // ── Poll — detect new bookings & payment confirmations ────────────────────
-  const poll = useCallback(async () => {
-    if (!isAuthenticated) return;
+  // ── Initial load — populate calling appointments & prev statuses ──────────
+  const loadInitial = useCallback(async () => {
     try {
       const data = await getAppointments({});
-
-      // Update calling appointments for navbar badge
       setCallingAppointments(data.filter((a) => a.status === 'calling'));
-
-      // Detect new appointments (just booked / payment pending)
-      data.forEach((a) => {
-        const isNew = !prevAppointmentIds.current.has(a._id);
-        const prevStatus = prevStatuses.current[a._id];
-        const statusChanged = prevStatus && prevStatus !== a.status;
-
-        if (isNew && WATCH_STATUSES.includes(a.status)) {
-          // Brand new appointment appeared
-          addToast({
-            type: 'info',
-            title: 'New appointment booked',
-            message: `${a.patientSnapshot?.name} · Token ${a.tokenNumber} · ₹${a.feeAmount}`,
-            appointmentId: a._id,
-            duration: 8000,
-          });
-        } else if (statusChanged) {
-          // Payment confirmed
-          if (prevStatus === 'payment_pending' && a.status === 'confirmed') {
-            addToast({
-              type: 'success',
-              title: 'Payment confirmed',
-              message: `${a.patientSnapshot?.name} · Token ${a.tokenNumber}`,
-              appointmentId: a._id,
-              duration: 6000,
-            });
-          }
-          // Appointment cancelled
-          if (a.status === 'cancelled') {
-            addToast({
-              type: 'error',
-              title: 'Appointment cancelled',
-              message: `${a.patientSnapshot?.name} · Token ${a.tokenNumber}`,
-              appointmentId: a._id,
-              duration: 6000,
-            });
-          }
-        }
-
-        prevStatuses.current[a._id] = a.status;
-      });
-
-      // Update seen IDs
-      data.forEach((a) => prevAppointmentIds.current.add(a._id));
+      data.forEach((a) => { prevStatuses.current[a._id] = a.status; });
     } catch (_) {}
-  }, [isAuthenticated, addToast]);
+  }, []);
 
+  // ── Handle incoming socket event ──────────────────────────────────────────
+  const handleAppointmentNew = useCallback((appt) => {
+    prevStatuses.current[appt._id] = appt.status;
+    addToast({
+      type: 'info',
+      title: 'New appointment booked',
+      message: `${appt.patientSnapshot?.name} · Token ${appt.tokenNumber} · ₹${appt.feeAmount}`,
+      appointmentId: appt._id,
+      duration: 8000,
+    });
+  }, [addToast]);
+
+  const handleAppointmentUpdated = useCallback((appt) => {
+    const prev = prevStatuses.current[appt._id];
+    prevStatuses.current[appt._id] = appt.status;
+
+    // Update calling list
+    setCallingAppointments((list) => {
+      if (appt.status === 'calling') {
+        const exists = list.find((a) => a._id === appt._id);
+        return exists ? list : [...list, appt];
+      }
+      return list.filter((a) => a._id !== appt._id);
+    });
+
+    if (prev === appt.status) return; // no change, skip toast
+
+    if (prev === 'payment_pending' && appt.status === 'confirmed') {
+      addToast({
+        type: 'success',
+        title: 'Payment confirmed',
+        message: `${appt.patientSnapshot?.name} · Token ${appt.tokenNumber}`,
+        appointmentId: appt._id,
+        duration: 6000,
+      });
+    } else if (appt.status === 'calling') {
+      addToast({
+        type: 'call',
+        title: 'Call started',
+        message: `${appt.patientSnapshot?.name} · Token ${appt.tokenNumber}`,
+        appointmentId: appt._id,
+        duration: 10000,
+      });
+    } else if (appt.status === 'cancelled') {
+      addToast({
+        type: 'error',
+        title: 'Appointment cancelled',
+        message: `${appt.patientSnapshot?.name} · Token ${appt.tokenNumber}`,
+        appointmentId: appt._id,
+        duration: 6000,
+      });
+    } else if (appt.status === 'completed') {
+      addToast({
+        type: 'success',
+        title: 'Call completed',
+        message: `${appt.patientSnapshot?.name} · Token ${appt.tokenNumber}`,
+        appointmentId: appt._id,
+        duration: 5000,
+      });
+    }
+  }, [addToast]);
+
+  // ── Connect / disconnect socket ───────────────────────────────────────────
   useEffect(() => {
     if (!isAuthenticated) {
-      clearInterval(timerRef.current);
+      socketRef.current?.disconnect();
+      socketRef.current = null;
       setCallingAppointments([]);
-      prevAppointmentIds.current = new Set();
       prevStatuses.current = {};
       return;
     }
-    // First poll — populate prevIds without showing notifications (avoid spam on login)
-    getAppointments({}).then((data) => {
-      data.forEach((a) => {
-        prevAppointmentIds.current.add(a._id);
-        prevStatuses.current[a._id] = a.status;
-      });
-      setCallingAppointments(data.filter((a) => a.status === 'calling'));
-    }).catch(() => {});
 
-    timerRef.current = setInterval(poll, 10000);
-    return () => clearInterval(timerRef.current);
-  }, [isAuthenticated, poll]);
+    loadInitial();
+
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+    });
+
+    socket.on('connect', () => {
+      socket.emit('join', 'admin'); // join admin room
+    });
+
+    socket.on('appointment:new', handleAppointmentNew);
+    socket.on('appointment:updated', handleAppointmentUpdated);
+
+    socketRef.current = socket;
+
+    return () => {
+      socket.off('appointment:new', handleAppointmentNew);
+      socket.off('appointment:updated', handleAppointmentUpdated);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [isAuthenticated, loadInitial, handleAppointmentNew, handleAppointmentUpdated]);
 
   return (
     <NotificationContext.Provider value={{

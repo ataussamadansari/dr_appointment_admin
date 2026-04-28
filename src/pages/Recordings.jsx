@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getRecordings } from '../api/appointmentApi';
 import { fetchRecordingUrl } from '../api/agoraApi';
+import { getRecordings } from '../api/appointmentApi';
 import DataTable from '../components/DataTable.jsx';
 import { formatDate } from '../utils/formatDate';
 
@@ -17,11 +17,13 @@ export default function Recordings() {
     try {
       const result = await fetchRecordingUrl(appointmentId);
       if (result.recordingUrl) {
-        setRows((prev) => prev.map((r, i) => i === rowIndex ? { ...r, recordingUrl: result.recordingUrl } : r));
+        setRows((prev) =>
+          prev.map((r, i) => (i === rowIndex ? { ...r, recordingUrl: result.recordingUrl } : r))
+        );
       } else {
         alert(result.message || 'Recording still uploading. Try again in 1-2 minutes.');
       }
-    } catch (e) {
+    } catch {
       alert('Failed to fetch recording URL.');
     } finally {
       setFetching((f) => ({ ...f, [rowIndex]: false }));
@@ -29,33 +31,48 @@ export default function Recordings() {
   };
 
   return (
-    <section>
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Recordings</h2>
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="page-title">Recordings</h2>
         <button className="btn-secondary flex items-center gap-2" onClick={load}>
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} /> <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
-      <div className="mt-6">
-        <DataTable rows={rows} columns={[
-          { key: 'patient', label: 'Patient', render: (r) => r.appointment?.patient?.mobile || '-' },
+
+      <DataTable
+        rows={rows}
+        empty="No recordings found."
+        columns={[
+          {
+            key: 'patient',
+            label: 'Patient',
+            render: (r) => r.appointment?.patient?.mobile || '—',
+          },
           { key: 'channelName', label: 'Channel' },
           { key: 'status', label: 'Status' },
-          { key: 'startedAt', label: 'Started', render: (r) => formatDate(r.startedAt) },
+          {
+            key: 'startedAt',
+            label: 'Started',
+            render: (r) => formatDate(r.startedAt),
+          },
           {
             key: 'recordingUrl',
-            label: 'Recording URL',
+            label: 'Recording',
             render: (r, i) => {
               if (r.recordingUrl) {
                 return (
-                  <a href={r.recordingUrl} target="_blank" rel="noreferrer"
-                    className="text-teal-600 underline break-all">
-                    View recording
+                  <a
+                    href={r.recordingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-teal-600 underline text-xs"
+                  >
+                    View
                   </a>
                 );
               }
               const appointmentId = r.appointment?._id || r.appointment;
-              if (!appointmentId) return <span className="text-slate-400">-</span>;
+              if (!appointmentId) return <span className="text-slate-400 text-xs">—</span>;
               return (
                 <button
                   className="flex items-center gap-1 text-xs text-slate-500 hover:text-teal-600 disabled:opacity-50"
@@ -66,11 +83,10 @@ export default function Recordings() {
                   {fetching[i] ? 'Checking...' : 'Fetch URL'}
                 </button>
               );
-            }
-          }
-        ]} />
-      </div>
+            },
+          },
+        ]}
+      />
     </section>
   );
 }
-

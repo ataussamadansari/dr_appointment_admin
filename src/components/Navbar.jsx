@@ -1,10 +1,10 @@
-import { Bell, LogOut, Phone, X } from 'lucide-react';
+import { Bell, LogOut, Menu, Phone, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 
-export default function Navbar() {
+export default function Navbar({ onMenuClick }) {
   const { admin, logout } = useAuth();
   const { notifications, callingAppointments, dismissNotification, clearAll } = useNotifications();
   const [open, setOpen] = useState(false);
@@ -15,31 +15,44 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-6 lg:px-8">
 
-        {/* Left — calling badge */}
-        <div className="flex items-center gap-3">
+        {/* Left */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Hamburger — mobile only */}
+          <button
+            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+            onClick={onMenuClick}
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          {/* Active call badge */}
           {callingAppointments.length > 0 && (
-            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-1.5">
-              <span className="relative flex h-2 w-2">
+            <div className="flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-2.5 py-1.5">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              <span className="text-xs font-semibold text-emerald-700">
+              <span className="text-xs font-semibold text-emerald-700 hidden sm:inline">
                 {callingAppointments.length} active call{callingAppointments.length > 1 ? 's' : ''}
+              </span>
+              <span className="text-xs font-semibold text-emerald-700 sm:hidden">
+                Live
               </span>
             </div>
           )}
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-2">
-          {/* Admin info */}
-          <div className="hidden sm:flex items-center gap-2 mr-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Admin info — sm+ */}
+          <div className="hidden sm:flex items-center gap-2 mr-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
               {admin?.name?.[0]?.toUpperCase() || 'A'}
             </div>
-            <div>
+            <div className="hidden md:block">
               <p className="text-sm font-semibold text-slate-900 leading-none">{admin?.name || 'Doctor'}</p>
               <p className="text-xs text-slate-400">{admin?.email}</p>
             </div>
@@ -50,6 +63,7 @@ export default function Navbar() {
             <button
               className="relative rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
               onClick={() => setOpen((o) => !o)}
+              aria-label="Notifications"
             >
               <Bell size={18} />
               {unread > 0 && (
@@ -61,7 +75,7 @@ export default function Navbar() {
 
             {/* Dropdown */}
             {open && (
-              <div className="absolute right-0 top-12 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl z-50">
+              <div className="absolute right-0 top-12 w-[calc(100vw-24px)] max-w-sm rounded-2xl border border-slate-200 bg-white shadow-xl z-50">
                 <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                   <p className="text-sm font-semibold text-slate-900">Notifications</p>
                   <div className="flex items-center gap-2">
@@ -76,7 +90,7 @@ export default function Navbar() {
                   </div>
                 </div>
 
-                <div className="max-h-80 overflow-y-auto">
+                <div className="max-h-72 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center">
                       <Bell size={24} className="mx-auto mb-2 text-slate-300" />
@@ -92,7 +106,7 @@ export default function Navbar() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-900">{n.title}</p>
-                          {n.message && <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>}
+                          {n.message && <p className="text-xs text-slate-500 mt-0.5 break-words">{n.message}</p>}
                           {n.appointmentId && (
                             <button
                               className="mt-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
@@ -122,7 +136,7 @@ export default function Navbar() {
 
           {/* Logout */}
           <button
-            className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 px-2.5 sm:px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
             onClick={logout}
           >
             <LogOut size={15} />
