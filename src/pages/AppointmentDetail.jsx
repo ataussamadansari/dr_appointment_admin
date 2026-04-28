@@ -1,13 +1,29 @@
-import { ArrowLeft, FilePenLine, MessageCircle, PhoneCall, RefreshCw, Video } from 'lucide-react';
+import { ArrowLeft, CalendarClock, FilePenLine, MessageCircle, PhoneCall, RefreshCw, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getAppointment, updateAppointmentStatus } from '../api/appointmentApi';
+import { fetchRecordingUrl } from '../api/agoraApi';
 import { sendPrescriptionWhatsapp } from '../api/prescriptionApi';
 import Loader from '../components/Loader.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useNotifications } from '../context/NotificationContext.jsx';
 import { APPOINTMENT_STATUSES } from '../utils/constants';
-import { formatDate } from '../utils/formatDate';
+import { formatDate, formatDateTime } from '../utils/formatDate';
+
+// Check if appointment date is today (IST)
+const isAppointmentToday = (dateStr) => {
+  if (!dateStr) return false;
+  const apptDate = new Date(dateStr);
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const apptIST = new Date(apptDate.getTime() + istOffset);
+  const nowIST  = new Date(now.getTime() + istOffset);
+  return (
+    apptIST.getUTCFullYear() === nowIST.getUTCFullYear() &&
+    apptIST.getUTCMonth()    === nowIST.getUTCMonth() &&
+    apptIST.getUTCDate()     === nowIST.getUTCDate()
+  );
+};
 
 export default function AppointmentDetail() {
   const { id } = useParams();
@@ -16,6 +32,8 @@ export default function AppointmentDetail() {
   const [appointment, setAppointment] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [recordingLoading, setRecordingLoading] = useState(false);
+  const [recordingMsg, setRecordingMsg] = useState('');
 
   const load = () => getAppointment(id).then(setAppointment);
   useEffect(() => { load(); }, [id]);
@@ -35,8 +53,25 @@ export default function AppointmentDetail() {
     }
   };
 
-  const sendPdf = async () => {
-    setWhatsappLoading(true);
+  const fetchRecording = async () => {
+    setRecordingLoading(true);
+    setRecordingMsg('');
+    try {
+      const result = await fetchRecordingUrl(id);
+      if (result.recordingUrl) {
+        await load(); // refresh to show new URL
+        setRecordingMsg('');
+      } else {
+        setRecordingMsg(result.message || 'Still uploading. Try again in 1-2 minutes.');
+      }
+    } catch (err) {
+      setRecordingMsg(err?.response?.data?.message || 'Failed to fetch recording.');
+    } finally {
+      setRecordingLoading(false);
+    }
+  };
+
+  const sendPdf = async () => {    setWhatsappLoading(true);
     try {
       await sendPrescriptionWhatsapp(appointment.prescription._id);
       await load();
@@ -49,6 +84,8 @@ export default function AppointmentDetail() {
   };
 
   const isCalling = appointment.status === 'calling';
+  const isToday = isAppointmentToday(appointment.appointmentDate);
+  const isFuture = !isToday && new Date(appointment.appointmentDate) > new Date();
 
   return (
     <section className="space-y-5 sm:space-y-6">
@@ -75,6 +112,16 @@ export default function AppointmentDetail() {
           </div>
         </div>
       </div>
+
+      {/* Future appointment banner */}
+      {isFuture && (
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 sm:px-5 sm:py-4">
+          <CalendarClock size={18} className="shrink-0 text-amber-600" />
+          <p className="text-sm font-medium text-amber-800">
+            This appointment is scheduled for a future date. Actions (video call, status change) will be available on the day of the appointment.
+          </p>
+        </div>
+      )}
 
       {/* Active call banner */}
       {isCalling && (
@@ -125,24 +172,41 @@ export default function AppointmentDetail() {
             <select
               className="input"
               value={appointment.status}
-              disabled={statusLoading}
+              disabled={statusLoading || isFuture}
               onChange={(e) => changeStatus(e.target.value)}
             >
               {APPOINTMENT_STATUSES.map((s) => (
                 <option key={s} value={s}>{s.replace('_', ' ')}</option>
               ))}
             </select>
+            {isFuture && (
+              <p className="mt-1 text-xs text-amber-600">Only cancellation allowed before appointment day</p>
+            )}
           </div>
 
-          <Link className="btn-primary w-full" to={`/appointments/${id}/video`}>
-            <Video size={16} />
-            {isCalling ? 'Rejoin call' : 'Start video call'}
-          </Link>
+          {isFuture ? (
+            <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-400 cursor-not-allowed">
+              <Video size={16} />
+              Start video call (available on appointment day)
+            </div>
+          ) : (
+            <Link className="btn-primary w-full" to={`/appointments/${id}/video`}>
+              <Video size={16} />
+              {isCalling ? 'Rejoin call' : 'Start video call'}
+            </Link>
+          )}
 
-          <Link className="btn-secondary w-full" to={`/appointments/${id}/prescription`}>
-            <FilePenLine size={16} />
-            {appointment.prescription ? 'Edit prescription' : 'Write prescription'}
-          </Link>
+          {isFuture ? (
+            <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-400 cursor-not-allowed">
+              <FilePenLine size={16} />
+              Write prescription (available on appointment day)
+            </div>
+          ) : (
+            <Link className="btn-secondary w-full" to={`/appointments/${id}/prescription`}>
+              <FilePenLine size={16} />
+              {appointment.prescription ? 'Edit prescription' : 'Write prescription'}
+            </Link>
+          )}
 
           {appointment.prescription?.pdfUrl && (
             <a className="btn-secondary w-full" href={appointment.prescription.pdfUrl} target="_blank" rel="noreferrer">
@@ -165,21 +229,49 @@ export default function AppointmentDetail() {
           <h3 className="font-semibold text-slate-900 mb-3">Call recording</h3>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm text-slate-600">
-                Status: <span className="font-medium">{appointment.callLog.status}</span>
-              </p>
+              <div className="flex items-center gap-2">
+                <span className={`inline-block h-2 w-2 rounded-full ${
+                  appointment.callLog.status === 'ended' ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'
+                }`} />
+                <p className="text-sm text-slate-600">
+                  Status: <span className="font-medium capitalize">{appointment.callLog.status}</span>
+                </p>
+              </div>
               {appointment.callLog.startedAt && (
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Started: {formatDate(appointment.callLog.startedAt)}
+                <p className="text-xs text-slate-400 mt-1">
+                  Started: {formatDateTime(appointment.callLog.startedAt)}
                 </p>
               )}
+              {recordingMsg && (
+                <p className="mt-1.5 text-xs text-amber-600">{recordingMsg}</p>
+              )}
             </div>
+
             {appointment.callLog.recordingUrl ? (
-              <a href={appointment.callLog.recordingUrl} target="_blank" rel="noreferrer" className="btn-secondary py-2 text-xs">
-                View recording
+              <a
+                href={appointment.callLog.recordingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-secondary py-2 text-xs"
+              >
+                ▶ View recording
               </a>
+            ) : appointment.callLog.status === 'ended' ? (
+              <div className="flex flex-col items-end gap-1.5">
+                <button
+                  className="btn-secondary py-2 text-xs flex items-center gap-1.5"
+                  disabled={recordingLoading}
+                  onClick={fetchRecording}
+                >
+                  <RefreshCw size={12} className={recordingLoading ? 'animate-spin' : ''} />
+                  {recordingLoading ? 'Checking...' : 'Fetch recording URL'}
+                </button>
+                <p className="text-xs text-slate-400">
+                  S3 upload takes 1–3 min after call ends
+                </p>
+              </div>
             ) : (
-              <span className="text-xs text-slate-400">Recording processing...</span>
+              <span className="text-xs text-slate-400">Recording in progress...</span>
             )}
           </div>
         </div>

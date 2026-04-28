@@ -1,4 +1,4 @@
-import { RefreshCw, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutList, RefreshCw, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAppointments } from '../api/appointmentApi';
@@ -7,70 +7,136 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import { APPOINTMENT_STATUSES } from '../utils/constants';
 import { formatDate } from '../utils/formatDate';
 
+// ── Date helpers (IST) ────────────────────────────────────────────────────────
 const TZ = 'Asia/Kolkata';
-
-// Format Date → 'YYYY-MM-DD' in IST
 const fmtIST = (d) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 
-// Helpers
-const startOfWeek = (d) => { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); return r; };
-const endOfWeek   = (d) => { const r = startOfWeek(d); r.setDate(r.getDate() + 6); return r; };
-const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
-const endOfMonth   = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
-const startOfYear  = (d) => new Date(d.getFullYear(), 0, 1);
-const endOfYear    = (d) => new Date(d.getFullYear(), 11, 31);
-const addDays      = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
-const addMonths    = (d, n) => { const r = new Date(d); r.setMonth(r.getMonth() + n); return r; };
-const addYears     = (d, n) => { const r = new Date(d); r.setFullYear(r.getFullYear() + n); return r; };
+const nowIST = () => new Date(new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date()));
+const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+const mondayOf = (d) => { const r = new Date(d); r.setDate(r.getDate() - ((r.getDay() + 6) % 7)); return r; };
 
-const nowIST = () => {
-  // Current date in IST as a plain Date (midnight UTC offset)
-  const s = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
-  return new Date(s);
-};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_LABELS = ['M','T','W','T','F','S','S'];
 
-// Quick date range presets
-const PRESETS = [
-  { label: 'Today',       key: 'today',       from: () => fmtIST(nowIST()),                          to: () => fmtIST(nowIST()) },
-  { label: 'Yesterday',   key: 'yesterday',   from: () => fmtIST(addDays(nowIST(), -1)),              to: () => fmtIST(addDays(nowIST(), -1)) },
-  { label: 'Tomorrow',    key: 'tomorrow',    from: () => fmtIST(addDays(nowIST(), 1)),               to: () => fmtIST(addDays(nowIST(), 1)) },
-  { label: 'This week',   key: 'this_week',   from: () => fmtIST(startOfWeek(nowIST())),              to: () => fmtIST(endOfWeek(nowIST())) },
-  { label: 'Last week',   key: 'last_week',   from: () => fmtIST(startOfWeek(addDays(nowIST(), -7))), to: () => fmtIST(endOfWeek(addDays(nowIST(), -7))) },
-  { label: 'This month',  key: 'this_month',  from: () => fmtIST(startOfMonth(nowIST())),             to: () => fmtIST(endOfMonth(nowIST())) },
-  { label: 'Last month',  key: 'last_month',  from: () => fmtIST(startOfMonth(addMonths(nowIST(), -1))), to: () => fmtIST(endOfMonth(addMonths(nowIST(), -1))) },
-  { label: 'This year',   key: 'this_year',   from: () => fmtIST(startOfYear(nowIST())),              to: () => fmtIST(endOfYear(nowIST())) },
-  { label: 'Last year',   key: 'last_year',   from: () => fmtIST(startOfYear(addYears(nowIST(), -1))), to: () => fmtIST(endOfYear(addYears(nowIST(), -1))) },
-  { label: 'All time',    key: 'all',         from: () => '',                                         to: () => '' },
-];
+// ── Week Calendar Component ───────────────────────────────────────────────────
+function WeekCalendar({ selectedDate, onSelect, datesWithData, weekOffset, onWeekChange }) {
+  const today = nowIST();
+  const monday = addDays(mondayOf(today), weekOffset * 7);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
 
+  const isSame = (a, b) => fmtIST(a) === fmtIST(b);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* Month header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+        <span className="text-sm font-bold text-slate-800">
+          {MONTHS[monday.getMonth()]} {monday.getFullYear()}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            onClick={() => onWeekChange(weekOffset - 1)}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-teal-600 hover:bg-teal-50 transition"
+            onClick={() => { onWeekChange(0); onSelect(fmtIST(today)); }}
+          >
+            Today
+          </button>
+          <button
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            onClick={() => onWeekChange(weekOffset + 1)}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Day labels */}
+      <div className="grid grid-cols-7 px-2 pt-2">
+        {DAY_LABELS.map((d, i) => (
+          <div key={i} className="text-center text-[11px] font-semibold text-slate-400 pb-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Date cells */}
+      <div className="grid grid-cols-7 gap-1 px-2 pb-3">
+        {days.map((day) => {
+          const key = fmtIST(day);
+          const isSelected = key === selectedDate;
+          const isToday = isSame(day, today);
+          const hasDot = datesWithData.has(key);
+
+          return (
+            <button
+              key={key}
+              onClick={() => onSelect(key)}
+              className={`flex flex-col items-center justify-center rounded-xl py-2 transition ${
+                isSelected
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : isToday
+                  ? 'bg-teal-50 text-teal-700'
+                  : 'hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              <span className={`text-sm font-bold leading-none ${isSelected ? 'text-white' : ''}`}>
+                {day.getDate()}
+              </span>
+              {/* Dot indicator */}
+              <span className={`mt-1.5 h-1.5 w-1.5 rounded-full transition ${
+                hasDot
+                  ? isSelected ? 'bg-white/70' : 'bg-teal-500'
+                  : 'bg-transparent'
+              }`} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Appointments Page ────────────────────────────────────────────────────
 export default function Appointments() {
-  const [rows, setRows] = useState([]);
-  const [status, setStatus] = useState('');
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [activePreset, setActivePreset] = useState('today');
-  const [dateFrom, setDateFrom] = useState(fmtIST(nowIST()));
-  const [dateTo, setDateTo] = useState(fmtIST(nowIST()));
+  const today = fmtIST(nowIST());
 
-  // Refs to always have latest values in callbacks (avoids stale closure)
-  const dateFromRef = useRef(fmtIST(nowIST()));
-  const dateToRef   = useRef(fmtIST(nowIST()));
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' | 'list'
+
+  // Calendar mode state
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // List mode state
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
+
+  const dateFromRef = useRef(today);
+  const dateToRef   = useRef(today);
   const statusRef   = useRef('');
 
-  const load = async (from, to, st) => {
-    // Fall back to refs so Refresh always uses current filter
-    const f  = from !== undefined ? from : dateFromRef.current;
-    const t  = to   !== undefined ? to   : dateToRef.current;
-    const s  = st   !== undefined ? st   : statusRef.current;
+  // All unique dates that have appointments (for dot indicators)
+  const datesWithData = new Set(
+    rows.map((r) => fmtIST(new Date(r.appointmentDate)))
+  );
 
+  const load = async (from, to, st) => {
+    const f = from !== undefined ? from : dateFromRef.current;
+    const t = to   !== undefined ? to   : dateToRef.current;
+    const s = st   !== undefined ? st   : statusRef.current;
     setLoading(true);
     try {
       const params = {};
       if (s) params.status   = s;
       if (f) params.dateFrom = f;
       if (t) params.dateTo   = t;
-      console.log('[Appointments] loading with params:', params);
       const data = await getAppointments(params);
       setRows(data);
     } finally {
@@ -78,62 +144,65 @@ export default function Appointments() {
     }
   };
 
-  useEffect(() => { load(); }, []);
-
-  const applyPreset = (preset) => {
-    const from = preset.from();
-    const to   = preset.to();
-    setActivePreset(preset.key);
-    setDateFrom(from);
-    setDateTo(to);
-    dateFromRef.current = from;
-    dateToRef.current   = to;
-    load(from, to, statusRef.current);
+  // Calendar mode: load whole week so dots show correctly
+  const loadWeek = (offset = weekOffset) => {
+    const monday = addDays(mondayOf(nowIST()), offset * 7);
+    const sunday = addDays(monday, 6);
+    const f = fmtIST(monday);
+    const t = fmtIST(sunday);
+    dateFromRef.current = f;
+    dateToRef.current   = t;
+    load(f, t, statusRef.current);
   };
 
-  const applyCustomRange = () => {
-    setActivePreset('custom');
-    load(dateFromRef.current, dateToRef.current, statusRef.current);
+  useEffect(() => {
+    if (viewMode === 'calendar') loadWeek();
+    else load();
+  }, [viewMode]);
+
+  const handleWeekChange = (offset) => {
+    setWeekOffset(offset);
+    loadWeek(offset);
+  };
+
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    // If selected date is outside current week range, shift week
+    const monday = addDays(mondayOf(nowIST()), weekOffset * 7);
+    const sunday = addDays(monday, 6);
+    const d = new Date(date);
+    if (d < monday || d > sunday) {
+      const newOffset = Math.round((mondayOf(d) - mondayOf(nowIST())) / (7 * 86400000));
+      setWeekOffset(newOffset);
+      loadWeek(newOffset);
+    }
   };
 
   const applyStatus = (s) => {
     setStatus(s);
     statusRef.current = s;
-    load(dateFromRef.current, dateToRef.current, s);
+    if (viewMode === 'calendar') loadWeek();
+    else load(dateFromRef.current, dateToRef.current, s);
   };
 
-  const handleDateFromChange = (val) => {
-    setDateFrom(val);
-    dateFromRef.current = val;
-    setActivePreset('custom');
-  };
+  const handleDateFromChange = (val) => { setDateFrom(val); dateFromRef.current = val; };
+  const handleDateToChange   = (val) => { setDateTo(val);   dateToRef.current   = val; };
 
-  const handleDateToChange = (val) => {
-    setDateTo(val);
-    dateToRef.current = val;
-    setActivePreset('custom');
-  };
-
-  const clearSearch = () => setSearch('');
-
-  const filtered = rows.filter((r) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      r.patientSnapshot?.name?.toLowerCase().includes(q) ||
-      r.patientSnapshot?.mobile?.includes(q) ||
-      String(r.tokenNumber).includes(q)
-    );
-  });
-
-  // Label for current range
-  const rangeLabel = (() => {
-    const p = PRESETS.find((p) => p.key === activePreset);
-    if (p && activePreset !== 'custom') return p.label;
-    if (dateFrom && dateTo) return `${dateFrom} → ${dateTo}`;
-    if (dateFrom) return `From ${dateFrom}`;
-    if (dateTo)   return `Until ${dateTo}`;
-    return 'All time';
+  // Filter rows for calendar view (selected date only) or list view (all loaded)
+  const displayRows = (() => {
+    let r = rows;
+    if (viewMode === 'calendar') {
+      r = r.filter((a) => fmtIST(new Date(a.appointmentDate)) === selectedDate);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      r = r.filter((a) =>
+        a.patientSnapshot?.name?.toLowerCase().includes(q) ||
+        a.patientSnapshot?.mobile?.includes(q) ||
+        String(a.tokenNumber).includes(q)
+      );
+    }
+    return r;
   })();
 
   return (
@@ -141,57 +210,69 @@ export default function Appointments() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="page-title">Appointments</h2>
-        <button className="btn-secondary flex items-center gap-2" onClick={() => load()}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          <span className="hidden sm:inline">Refresh</span>
-        </button>
-      </div>
-
-      {/* ── Date preset chips ── */}
-      <div className="flex flex-wrap gap-1.5">
-        {PRESETS.map((p) => (
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <button
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition ${
+                viewMode === 'calendar' ? 'bg-teal-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+              onClick={() => setViewMode('calendar')}
+            >
+              <ChevronLeft size={13} />
+              <ChevronRight size={13} />
+              Calendar
+            </button>
+            <button
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition ${
+                viewMode === 'list' ? 'bg-teal-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+              onClick={() => setViewMode('list')}
+            >
+              <LayoutList size={13} />
+              List
+            </button>
+          </div>
           <button
-            key={p.key}
-            type="button"
-            onClick={() => applyPreset(p)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-              activePreset === p.key
-                ? 'bg-teal-600 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+            className="btn-secondary flex items-center gap-2"
+            onClick={() => viewMode === 'calendar' ? loadWeek() : load()}
           >
-            {p.label}
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-        ))}
+        </div>
       </div>
 
-      {/* ── Custom date range ── */}
-      <div className="flex flex-wrap items-end gap-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">From</label>
-          <input
-            type="date"
-            className="input w-40 text-sm"
-            value={dateFrom}
-            onChange={(e) => handleDateFromChange(e.target.value)}
-          />
+      {/* ── Calendar view ── */}
+      {viewMode === 'calendar' && (
+        <WeekCalendar
+          selectedDate={selectedDate}
+          onSelect={handleDateSelect}
+          datesWithData={datesWithData}
+          weekOffset={weekOffset}
+          onWeekChange={handleWeekChange}
+        />
+      )}
+
+      {/* ── List view filters ── */}
+      {viewMode === 'list' && (
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">From</label>
+            <input type="date" className="input w-40 text-sm" value={dateFrom}
+              onChange={(e) => handleDateFromChange(e.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">To</label>
+            <input type="date" className="input w-40 text-sm" value={dateTo}
+              onChange={(e) => handleDateToChange(e.target.value)} />
+          </div>
+          <button className="btn-primary py-2.5 text-sm"
+            onClick={() => load(dateFromRef.current, dateToRef.current, statusRef.current)}>
+            Apply
+          </button>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">To</label>
-          <input
-            type="date"
-            className="input w-40 text-sm"
-            value={dateTo}
-            onChange={(e) => handleDateToChange(e.target.value)}
-          />
-        </div>
-        <button
-          className="btn-primary py-2.5 text-sm"
-          onClick={applyCustomRange}
-        >
-          Apply
-        </button>
-      </div>
+      )}
 
       {/* ── Search + Status ── */}
       <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
@@ -204,19 +285,13 @@ export default function Appointments() {
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              onClick={clearSearch}
-            >
+            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              onClick={() => setSearch('')}>
               <X size={14} />
             </button>
           )}
         </div>
-        <select
-          className="input sm:max-w-44"
-          value={status}
-          onChange={(e) => applyStatus(e.target.value)}
-        >
+        <select className="input sm:max-w-44" value={status} onChange={(e) => applyStatus(e.target.value)}>
           <option value="">All statuses</option>
           {APPOINTMENT_STATUSES.map((s) => (
             <option key={s} value={s}>{s.replace('_', ' ')}</option>
@@ -226,16 +301,18 @@ export default function Appointments() {
 
       {/* ── Result count ── */}
       <p className="text-sm text-slate-500">
-        <span className="font-medium text-slate-700">{filtered.length}</span> appointment{filtered.length !== 1 ? 's' : ''}
-        {' · '}
-        <span className="text-teal-600 font-medium">{rangeLabel}</span>
+        <span className="font-medium text-slate-700">{displayRows.length}</span> appointment{displayRows.length !== 1 ? 's' : ''}
+        {viewMode === 'calendar' && (
+          <span> · <span className="text-teal-600 font-medium">{selectedDate}</span></span>
+        )}
         {status && <span> · <span className="capitalize">{status.replace('_', ' ')}</span></span>}
         {search && <span> · matching "<span className="font-medium">{search}</span>"</span>}
       </p>
 
+      {/* ── Table ── */}
       <DataTable
-        rows={filtered}
-        empty="No appointments found for this period."
+        rows={displayRows}
+        empty={viewMode === 'calendar' ? `No appointments on ${selectedDate}` : 'No appointments found.'}
         columns={[
           {
             key: 'token',

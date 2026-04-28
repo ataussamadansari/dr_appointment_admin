@@ -18,7 +18,15 @@ export default function Dashboard() {
   const load = async () => {
     setLoading(true);
     try {
-      const [s, r] = await Promise.all([getDashboard(), getAppointments({ limit: 5 })]);
+      // Recent = today and past only (not future appointments)
+      const todayIST = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata'
+      }).format(new Date());
+
+      const [s, r] = await Promise.all([
+        getDashboard(),
+        getAppointments({ dateTo: todayIST }),
+      ]);
       setStats(s);
       setRecent(r.slice(0, 6));
     } finally {
