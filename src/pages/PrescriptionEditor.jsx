@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPrescription } from '../api/prescriptionApi';
 import MedicineAutocomplete from '../components/MedicineAutocomplete.jsx';
+import { useNotifications } from '../context/NotificationContext.jsx';
 
 export default function PrescriptionEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     diagnosis: '',
@@ -37,7 +39,10 @@ export default function PrescriptionEditor() {
         ...form,
         testsSuggested: form.testsSuggested.split(',').map((x) => x.trim()).filter(Boolean),
       });
+      addNotification({ type: 'success', title: 'Prescription saved', message: 'PDF generated successfully' });
       navigate(`/appointments/${id}`);
+    } catch (err) {
+      addNotification({ type: 'error', title: 'Save failed', message: err?.response?.data?.message || err.message || 'Failed to save prescription' });
     } finally {
       setSaving(false);
     }
