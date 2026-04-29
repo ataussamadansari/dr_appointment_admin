@@ -3,10 +3,10 @@ import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 
 const links = [
-  { to: '/',             label: 'Dashboard',    icon: LayoutDashboard },
-  { to: '/appointments', label: 'Appointments', icon: CalendarDays },
-  { to: '/settings',     label: 'Settings',     icon: Settings },
-  { to: '/recordings',   label: 'Recordings',   icon: Video },
+  { to: '/admin',             label: 'Dashboard',    icon: LayoutDashboard },
+  { to: '/admin/appointments', label: 'Appointments', icon: CalendarDays },
+  { to: '/admin/settings',     label: 'Settings',     icon: Settings },
+  { to: '/admin/recordings',   label: 'Recordings',   icon: Video },
 ];
 
 const Brand = () => (

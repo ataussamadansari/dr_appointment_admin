@@ -69,7 +69,7 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <Link to={`/appointments/${callingAppointments[0]._id}/video`} className="btn-primary py-2 text-xs shrink-0">
+          <Link to={`/admin/appointments/${callingAppointments[0]._id}/video`} className="btn-primary py-2 text-xs shrink-0">
             <Video size={14} /> Join call
           </Link>
         </div>
@@ -89,7 +89,7 @@ export default function Dashboard() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-slate-900">Recent appointments</h3>
-          <Link to="/appointments" className="text-sm font-medium text-teal-600 hover:text-teal-700">
+          <Link to="/admin/appointments" className="text-sm font-medium text-teal-600 hover:text-teal-700">
             View all →
           </Link>
         </div>
@@ -113,7 +113,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusBadge status={a.status} />
-                  <Link to={`/appointments/${a._id}`} className="text-xs font-semibold text-teal-600 hover:text-teal-700">
+                  <Link to={`/admin/appointments/${a._id}`} className="text-xs font-semibold text-teal-600 hover:text-teal-700">
                     Open
                   </Link>
                 </div>

@@ -40,7 +40,7 @@ export default function PrescriptionEditor() {
         testsSuggested: form.testsSuggested.split(',').map((x) => x.trim()).filter(Boolean),
       });
       addNotification({ type: 'success', title: 'Prescription saved', message: 'PDF generated successfully' });
-      navigate(`/appointments/${id}`);
+      navigate(`/admin/appointments/${id}`);
     } catch (err) {
       addNotification({ type: 'error', title: 'Save failed', message: err?.response?.data?.message || err.message || 'Failed to save prescription' });
     } finally {

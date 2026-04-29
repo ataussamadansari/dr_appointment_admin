@@ -296,7 +296,7 @@ export default function VideoConsultation() {
     try {
       await endCallCleanup();
       addNotification({ type: 'success', title: 'Call ended', message: 'Recording stop requested' });
-      navigate(`/appointments/${id}`);
+      navigate(`/admin/appointments/${id}`);
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || 'Failed to end call.');
     } finally {

@@ -10,7 +10,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  if (isAuthenticated) return <Navigate to="/admin" replace />;
 
   const submit = async (e) => {
     e.preventDefault();

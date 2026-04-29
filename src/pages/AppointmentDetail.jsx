@@ -133,7 +133,7 @@ export default function AppointmentDetail() {
             </span>
             <p className="text-sm font-semibold text-emerald-800">Call is active</p>
           </div>
-          <Link to={`/appointments/${id}/video`} className="btn-primary py-2 text-xs shrink-0">
+          <Link to={`/admin/appointments/${id}/video`} className="btn-primary py-2 text-xs shrink-0">
             <Video size={14} /> Rejoin call
           </Link>
         </div>
@@ -190,7 +190,7 @@ export default function AppointmentDetail() {
               Start video call (available on appointment day)
             </div>
           ) : (
-            <Link className="btn-primary w-full" to={`/appointments/${id}/video`}>
+            <Link className="btn-primary w-full" to={`/admin/appointments/${id}/video`}>
               <Video size={16} />
               {isCalling ? 'Rejoin call' : 'Start video call'}
             </Link>
@@ -202,7 +202,7 @@ export default function AppointmentDetail() {
               Write prescription (available on appointment day)
             </div>
           ) : (
-            <Link className="btn-secondary w-full" to={`/appointments/${id}/prescription`}>
+            <Link className="btn-secondary w-full" to={`/admin/appointments/${id}/prescription`}>
               <FilePenLine size={16} />
               {appointment.prescription ? 'Edit prescription' : 'Write prescription'}
             </Link>

@@ -111,7 +111,7 @@ export default function Navbar({ onMenuClick }) {
                             <button
                               className="mt-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
                               onClick={() => {
-                                navigate(`/appointments/${n.appointmentId}/video`);
+                                navigate(`/admin/appointments/${n.appointmentId}/video`);
                                 setOpen(false);
                                 dismissNotification(n.id);
                               }}

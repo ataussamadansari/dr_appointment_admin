@@ -346,7 +346,7 @@ export default function Appointments() {
             render: (r) => (
               <Link
                 className="rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-100"
-                to={`/appointments/${r._id}`}
+                to={`/admin/appointments/${r._id}`}
               >
                 Open
               </Link>
