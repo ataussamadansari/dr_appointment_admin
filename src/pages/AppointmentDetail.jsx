@@ -149,6 +149,8 @@ export default function AppointmentDetail() {
               ['Age', appointment.patientSnapshot.age],
               ['Gender', appointment.patientSnapshot.gender],
               ['City', appointment.patientSnapshot.city],
+              ['Patient type', appointment.patientType],
+              ['Last prescription', appointment.lastPrescriptionDate ? formatDate(appointment.lastPrescriptionDate) : null],
               ['Fee', `₹${appointment.feeAmount}`],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
@@ -161,6 +163,11 @@ export default function AppointmentDetail() {
             <dt className="text-xs text-slate-400 mb-1">Complaint</dt>
             <dd className="text-sm text-slate-700 leading-relaxed">{appointment.symptoms}</dd>
           </div>
+          {appointment.prescriptionPhotoUrl && (
+            <a className="btn-secondary w-fit" href={appointment.prescriptionPhotoUrl} target="_blank" rel="noreferrer">
+              View previous prescription photo
+            </a>
+          )}
         </div>
 
         {/* Actions */}

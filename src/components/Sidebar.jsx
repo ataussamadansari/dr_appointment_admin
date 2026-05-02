@@ -1,10 +1,12 @@
-import { CalendarDays, LayoutDashboard, Settings, Video, X } from 'lucide-react';
+import { Activity, CalendarDays, LayoutDashboard, MessageCircle, Settings, Video, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 
 const links = [
   { to: '/admin',             label: 'Dashboard',    icon: LayoutDashboard },
   { to: '/admin/appointments', label: 'Appointments', icon: CalendarDays },
+  { to: '/admin/whatsapp-bookings', label: 'WhatsApp', icon: MessageCircle },
+  { to: '/admin/symptoms', label: 'Symptoms', icon: Activity },
   { to: '/admin/settings',     label: 'Settings',     icon: Settings },
   { to: '/admin/recordings',   label: 'Recordings',   icon: Video },
 ];

@@ -42,7 +42,9 @@ export default function DoctorSettings() {
     try {
       const result = await updateSettings({
         consultationFee: Number(form.consultationFee),
+        prescriptionAmount: Number(form.prescriptionAmount || form.consultationFee),
         maxSeatsPerDay:  Number(form.maxSeatsPerDay),
+        holidayDates: Array.isArray(form.holidayDates) ? form.holidayDates : [],
         isAvailable:     Boolean(form.isAvailable),
       });
       setForm(result);
@@ -178,6 +180,29 @@ export default function DoctorSettings() {
 
             {/* Max tokens */}
             <div>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Prescription / video consultation amount</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">₹</span>
+                <input className="input pl-8" type="number" min="1" required
+                  value={form.prescriptionAmount || form.consultationFee}
+                  onChange={(e) => set('prescriptionAmount', e.target.value)} />
+              </div>
+              <p className="mt-1 text-xs text-slate-400">This amount is charged from patients while booking from the app.</p>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Monthly holidays</label>
+              <input
+                className="input"
+                placeholder="2026-05-10, 2026-05-21"
+                value={(form.holidayDates || []).join(', ')}
+                onChange={(e) => set('holidayDates', e.target.value.split(',').map((x) => x.trim()).filter(Boolean))}
+              />
+              <p className="mt-1 text-xs text-slate-400">Use YYYY-MM-DD format. Booking will close when tomorrow matches one of these dates.</p>
+            </div>
+
+            {/* Max tokens */}
+            <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">Max tokens per day</label>
               <div className="flex flex-wrap gap-2 mb-3">
                 {QUICK_TOKENS.map((n) => (
@@ -271,12 +296,12 @@ export default function DoctorSettings() {
                     <span className="font-bold text-teal-800">{Math.max(maxTokens - bookedCount, 0)}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm">
-                    <span className="text-slate-500">Fee per token</span>
-                    <span className="font-bold text-slate-900">₹{form.consultationFee}</span>
+                    <span className="text-slate-500">Patient booking amount</span>
+                    <span className="font-bold text-slate-900">₹{form.prescriptionAmount || form.consultationFee}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm">
                     <span className="text-slate-500">Max daily revenue</span>
-                    <span className="font-bold text-slate-900">₹{(maxTokens * Number(form.consultationFee)).toLocaleString('en-IN')}</span>
+                    <span className="font-bold text-slate-900">₹{(maxTokens * Number(form.prescriptionAmount || form.consultationFee)).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </>

@@ -1,4 +1,4 @@
-import { CalendarCheck, CalendarClock, IndianRupee, RefreshCw, TrendingUp, Video } from 'lucide-react';
+import { CalendarCheck, CalendarClock, IndianRupee, MessageCircle, RefreshCw, TrendingUp, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAppointments } from '../api/appointmentApi';
@@ -82,6 +82,15 @@ export default function Dashboard() {
           <StatCard label="Tomorrow" value={stats.tomorrowAppointments} icon={CalendarClock} color="blue" />
           <StatCard label="Completed" value={stats.completedAppointments} icon={TrendingUp} color="violet" />
           <StatCard label="Revenue" value={`₹${(stats.revenue || 0).toLocaleString('en-IN')}`} icon={IndianRupee} color="amber" />
+        </div>
+      )}
+
+      {stats?.whatsapp && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <StatCard label="WhatsApp Tomorrow" value={stats.whatsapp.tomorrowBookings} icon={MessageCircle} color="teal" />
+          <StatCard label="Paid Tokens" value={stats.whatsapp.paidTokens} icon={CalendarCheck} color="blue" />
+          <StatCard label="Pending Payments" value={stats.whatsapp.pendingPayments} icon={CalendarClock} color="amber" />
+          <StatCard label="Available Tokens" value={`${stats.whatsapp.availableTokens}/${stats.whatsapp.maxTokens}`} icon={TrendingUp} color="violet" />
         </div>
       )}
 

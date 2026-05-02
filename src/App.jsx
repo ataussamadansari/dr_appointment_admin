@@ -8,7 +8,9 @@ import Login from './pages/Login.jsx';
 import Portfolio from './pages/Portfolio.jsx';
 import PrescriptionEditor from './pages/PrescriptionEditor.jsx';
 import Recordings from './pages/Recordings.jsx';
+import SymptomsMaster from './pages/SymptomsMaster.jsx';
 import VideoConsultation from './pages/VideoConsultation.jsx';
+import WhatsAppBookings from './pages/WhatsAppBookings.jsx';
 
 export default function App() {
   return (
@@ -20,6 +22,8 @@ export default function App() {
       <Route path="/admin" element={<ProtectedRoute />}>
         <Route index element={<Dashboard />} />
         <Route path="appointments" element={<Appointments />} />
+        <Route path="whatsapp-bookings" element={<WhatsAppBookings />} />
+        <Route path="symptoms" element={<SymptomsMaster />} />
         <Route path="appointments/:id" element={<AppointmentDetail />} />
         <Route path="appointments/:id/video" element={<VideoConsultation />} />
         <Route path="appointments/:id/prescription" element={<PrescriptionEditor />} />

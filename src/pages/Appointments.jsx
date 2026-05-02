@@ -339,6 +339,7 @@ export default function Appointments() {
             render: (r) => <span className="text-slate-600">{formatDate(r.appointmentDate)}</span>,
           },
           { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+          { key: 'source', label: 'Source', render: (r) => r.source === 'whatsapp' ? 'WhatsApp' : 'App' },
           { key: 'fee', label: 'Fee', render: (r) => `₹${r.feeAmount}` },
           {
             key: 'actions',
